@@ -1,0 +1,299 @@
+---
+title: "Colombia en Mapas"
+author: "Por Daniel Hurtado"
+output: 
+  flexdashboard::flex_dashboard:
+    logo: "C:/Program Files/Daniel/finanzas/pagina/Municipio/logo.png"
+    orientation: columns
+    vertical_layout: fill
+    navbar:
+      - { title: "Pagina Web", href: "https://sites.google.com/mail.uniatlantico.edu.co/asesoras-hurtado/", align: right }
+      - { icon: "fa-facebook", href: "https://web.facebook.com/profile.php?id=61555215714992&locale=es_LA", align: right}
+      - { icon: "fa-linkedin", href: "https://www.linkedin.com/in/daniel-hurtado-garcia-a26347232/", align: right}
+    theme: journal
+---
+
+```{=html}
+<style>
+.navbar-logo{
+width:100px;
+height:100px;
+}
+</style>
+```
+```{r setup, include=FALSE}
+library(flexdashboard)
+require(pacman)
+pacman::p_load(raster, RColorBrewer, readxl,htmltools, DT, rmapshaper, leafem, leaflet.providers, leaflet.extras, leaflegend, geodata, kableExtra,stringr, sf, tidyverse, fs, gtools, cptcity, leaflet, glue)
+```
+
+```{r n, include=FALSE, message = FALSE}
+setwd("C:/Program Files/Daniel/finanzas/pagina/Municipio")
+datos<-read_excel("datos.xlsx")
+mapa<- st_read("co_2018_MGN_MPIO_POLITICO.geojson")
+datos<- left_join(mapa,datos, by=c("MPIO_CCNCT"="MPIO"))
+datos <- st_as_sf(datos)
+datos <- st_transform(datos, crs = 4326) 
+```
+
+# Poblacion 2024 {data-navmenu="Variable"}
+
+## Column {data-width="600"}
+
+### Mapa de Poblacion año 2024
+
+```{r mapa, message=FALSE, height=500, include=TRUE, width=500}
+
+# filtrar año
+datos$lPob <- log(datos$Pob)
+
+
+# definir labels
+lab <- paste0(
+      "Departamento:", datos$DPTO_CNMBR, "<br>",
+      "Municipio:", datos$MPIO_CNMBR, "<br>",
+      "Población:",datos$Pob, "<br>",
+      "Clasificación:", datos$tipo, "<br>"
+    ) %>%
+    lapply(htmltools::HTML)
+  
+# Filtrar datos para mostrar solo los polígonos seleccionados
+tipo_municipio <- unique(datos$tipo[!is.na(datos$tipo)])
+
+# Definir paleta de colores
+pal <- colorNumeric("BuPu", domain = datos$lPob)
+
+r1 <- tags$div(
+  HTML('<a href:" "> Fuente: DANE </a>')
+)
+
+# Crear mapa Leaflet
+leaflet(datos) %>%
+  addProviderTiles("CartoDB.DarkMatter") %>%
+  addPolygons(
+    stroke = FALSE,
+    smoothFactor = 0.3,
+    fillOpacity = 1,
+    group = ~tipo,
+    fillColor = ~pal(lPob),
+    label = ~lab
+  ) %>%
+  addLayersControl(
+    overlayGroups = tipo_municipio,
+    options = layersControlOptions(collapsed=FALSE)
+  ) %>%
+  setView(lat = 4.710989, lng = -74.072092, zoom = 4.8) %>%
+  addControl(r1, position = "bottomleft") %>%
+  addResetMapButton()
+
+```
+
+## Column {data-width="400"}
+
+### Proporción
+
+```{r Grafica, include=TRUE, message = FALSE, width = 350, height = 300}
+
+    sum_poblacion <- aggregate(Pob ~ tipo, data = datos, FUN = sum)
+    sum_poblacion$porcentaje <- sum_poblacion$Pob / sum(sum_poblacion$Pob) * 100
+    ggplot(sum_poblacion, aes(x = "", y = porcentaje, fill = tipo)) +
+      geom_bar(stat = "identity") +
+      coord_polar("y", start = 0) +
+      geom_text(aes(label = paste0(round(porcentaje), "%")), position = position_stack(vjust = 0.5)) +
+      labs(title = "Distribución de Población por Clasificación del Municipio",
+           fill = "Clasificación",
+           y = "Porcentaje de Población",
+           x = "") +
+      scale_fill_brewer(palette = "Purples") +
+      theme_minimal()
+
+
+```
+
+
+# Tasa Crimen 2022 {data-navmenu="Variable"}
+
+## Column {data-width="600"}
+
+### Tasa de Crimen por 100K Hab.
+
+```{r mapa2, message=FALSE, height=500, include=TRUE, width=500}
+
+datos$lcrimen = log(datos$crimen)
+
+# definir labels
+lab2 <- paste0(
+      "Departamento:", datos$DPTO_CNMBR, "<br>",
+      "Municipio:", datos$MPIO_CNMBR, "<br>",
+      "Tasa:",datos$crimen, "<br>",
+      "Clasificación:", datos$tipo, "<br>"
+    ) %>%
+    lapply(htmltools::HTML)
+
+# Definir paleta de colores
+pal2 <- colorNumeric("OrRd", domain = datos$lcrimen)
+
+r2 <- tags$div(
+  HTML('<a href:" "> Fuente: FISCALIA </a>')
+)
+
+# Crear mapa Leaflet
+leaflet(datos) %>%
+  addProviderTiles("CartoDB.DarkMatter") %>%
+  addPolygons(
+    stroke = FALSE,
+    smoothFactor = 0.3,
+    fillOpacity = 1,
+    group = ~tipo,
+    fillColor = ~pal2(lcrimen),
+    label = ~lab2
+  ) %>%
+  addLayersControl(
+    overlayGroups = tipo_municipio,
+    options = layersControlOptions(collapsed=FALSE)
+  ) %>%
+  setView(lat = 4.710989, lng = -74.072092, zoom = 4.8) %>%
+  addControl(r2, position = "bottomleft") %>%
+  addResetMapButton()
+
+```
+
+## Column {data-width="400"}
+
+### Proporción
+
+```{r Grafica2, include=TRUE, message = FALSE, width = 350, height = 300}
+
+    mean_crimen <- aggregate(crimen ~ tipo, data = datos, FUN = mean)
+    ggplot(mean_crimen, aes(x = reorder(tipo, crimen), y = crimen, fill = crimen)) +
+      geom_bar(stat = "identity") +
+      labs(x = "Clasificación", y = "Tasa de criminalidad Promedio por cada 100k Hab.") +
+      scale_fill_gradient(low = "lightcoral", high = "darkred") + 
+      theme_minimal() +
+      coord_flip()
+
+
+```
+
+
+# Tasa Desnutricion 2022 {data-navmenu="Variable"}
+
+## Column {data-width="600"}
+
+### Tasa de Desnutricion por cada 100k Hab.
+
+```{r mapa3, message=FALSE, height=500, include=TRUE, width=500}
+
+# filtrar año
+datos$LTD <- log(datos$TD)
+
+
+# definir labels
+lab3 <- paste0(
+      "Departamento:", datos$DPTO_CNMBR, "<br>",
+      "Municipio:", datos$MPIO_CNMBR, "<br>",
+      "Tasa:",datos$TD, "<br>",
+      "Clasificación:", datos$tipo, "<br>"
+    ) %>%
+    lapply(htmltools::HTML)
+
+# Definir paleta de colores
+
+pal3 <- colorNumeric("Blues", domain = datos$LTD)
+
+r3 <- tags$div(
+  HTML('<a href:" "> Fuente: Ministerio de Salud y Protección Social - RIPS </a>')
+)
+
+# Crear mapa Leaflet
+leaflet(datos) %>%
+  addProviderTiles("CartoDB.DarkMatter") %>%
+  addPolygons(
+    stroke = FALSE,
+    smoothFactor = 0.3,
+    fillOpacity = 1,
+    group = ~tipo,
+    fillColor = ~pal3(LTD),
+    label = ~lab3
+  ) %>%
+  addLayersControl(
+    overlayGroups = tipo_municipio,
+    options = layersControlOptions(collapsed=FALSE)
+  ) %>%
+  setView(lat = 4.710989, lng = -74.072092, zoom = 4.8) %>%
+  addControl(r3, position = "bottomleft") %>%
+  addResetMapButton()
+
+```
+
+## Column {data-width="400"}
+
+### Proporción
+
+```{r Grafica3, include=TRUE, message = FALSE, width = 350, height = 300}
+
+    mean_TD <- aggregate(TD ~ tipo, data = datos, FUN = mean)
+    ggplot(mean_TD, aes(x = reorder(tipo, TD), y = TD, fill = TD)) +
+      geom_bar(stat = "identity") +
+      labs(x = "Clasificación", y = "Tasa de Desnutrición Promedio por cada 100k Hab.") +
+      scale_fill_gradient(low = "lightblue", high = "darkblue") + 
+      theme_minimal() +
+      coord_flip()
+
+
+```
+
+# Valor Agregado 2021 {data-navmenu="Variable"}
+
+## Column {data-width="600"}
+
+### Valor Agregado Municipal.
+
+```{r mapa4, message=FALSE, height=500, include=TRUE, width=500}
+
+    pal4 <- colorNumeric("YlOrBr", domain = log(datos$ValorA))
+    leaflet(datos) %>%
+      addProviderTiles("CartoDB.DarkMatter") %>%
+      addPolygons(
+        stroke = FALSE,
+        smoothFactor = 0.3,
+        fillOpacity = 1,
+        fillColor = ~pal4(log(datos$ValorA)),
+        group = ~tipo,
+        label = ~paste0("Departamento:", DPTO_CNMBR, "<br>",
+                        "Municipio:", MPIO_CNMBR, "<br>",
+                        "Valor Agregado MM de Pesos:", ValorA, "<br>",
+                        "Clasificación:", tipo, "<br>")%>%
+          lapply(htmltools::HTML)
+      ) %>%
+      addLayersControl(
+        overlayGroups = tipo_municipio,
+        options = layersControlOptions(collapsed=FALSE)
+      ) %>%
+      setView(lat = 4.710989, lng = -74.072092, zoom = 4.8) %>%
+      addControl(tags$div(HTML('<a href="https://www.dane.gov.co/"> Fuente: DANE </a>')), position = "bottomleft")
+
+```
+
+## Column {data-width="400"}
+
+### Proporción
+
+```{r Grafica4, include=TRUE, message = FALSE, width = 350, height = 300}
+
+    sum_valor <- aggregate(ValorA ~ tipo, data = datos, FUN = sum)
+    sum_valor$porcentaje <- sum_valor$ValorA / sum(sum_valor$ValorA) * 100
+    ggplot(sum_valor, aes(x = "", y = porcentaje, fill = tipo)) +
+      geom_bar(stat = "identity") +
+      coord_polar("y", start = 0) +
+      geom_text(aes(label = paste0(round(porcentaje), "%")), position = position_stack(vjust = 0.5)) +
+      labs(title = "Distribución del Valor Agregado por Clasificación del Municipio",
+           fill = "Clasificación",
+           y = "Porcentaje del Valor Agregado",
+           x = "") +
+      scale_fill_brewer(palette = "YlOrBr") +
+      theme_minimal()
+
+```
+
+
