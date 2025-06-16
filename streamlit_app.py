@@ -147,8 +147,22 @@ def crear_grafico_lineas(df, tema):
         paper_bgcolor=bg_color,
         plot_bgcolor=bg_color,
         font_color=text_color,
-        xaxis=dict(gridcolor=grid_color, title="Fecha"),
-        yaxis=dict(gridcolor=grid_color, title="Monto")
+        xaxis=dict(
+            gridcolor=grid_color, 
+            title="Fecha", 
+            tickcolor=text_color, 
+            linecolor=text_color,
+            title_font_color=text_color,
+            tickfont_color=text_color
+        ),
+        yaxis=dict(
+            gridcolor=grid_color, 
+            title="Monto", 
+            tickcolor=text_color, 
+            linecolor=text_color,
+            title_font_color=text_color,
+            tickfont_color=text_color
+        )
     )
     
     return fig
@@ -186,8 +200,22 @@ def crear_grafico_barras(df, tema):
         paper_bgcolor=bg_color,
         plot_bgcolor=bg_color,
         font_color=text_color,
-        xaxis=dict(gridcolor=grid_color, title="Fecha"),
-        yaxis=dict(gridcolor=grid_color, title="Utilidad")
+        xaxis=dict(
+            gridcolor=grid_color, 
+            title="Fecha", 
+            tickcolor=text_color, 
+            linecolor=text_color,
+            title_font_color=text_color,
+            tickfont_color=text_color
+        ),
+        yaxis=dict(
+            gridcolor=grid_color, 
+            title="Utilidad", 
+            tickcolor=text_color, 
+            linecolor=text_color,
+            title_font_color=text_color,
+            tickfont_color=text_color
+        )
     )
     
     return fig
