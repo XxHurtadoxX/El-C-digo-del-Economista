@@ -44,11 +44,11 @@ def generar_datos_falsos(meses=12, año=2024):
     return pd.DataFrame(data)
 
 def procesar_archivo_csv(uploaded_file):
-    """Procesa archivo CSV subido por el usuario"""
+    """Procesa archivo CSV subido por el usuario y calcula la utilidad"""
     try:
         # Leer el archivo
         df = pd.read_csv(uploaded_file)
-        
+
         # Intentar detectar columnas de fecha
         date_columns = df.select_dtypes(include=['object']).columns
         for col in date_columns:
@@ -57,10 +57,18 @@ def procesar_archivo_csv(uploaded_file):
                 break  # Usar la primera columna que se pueda convertir
             except:
                 continue
-        
+
+        # Verificar si existen las columnas necesarias para calcular utilidad
+        if 'Ingresos' in df.columns and 'Egresos' in df.columns:
+            df['Utilidad'] = df['Ingresos'] - df['Egresos']
+        else:
+            missing = [col for col in ['Ingresos', 'Costos'] if col not in df.columns]
+            return None, f"Faltan columnas necesarias para calcular utilidad: {missing}"
+
         return df, None
     except Exception as e:
         return None, str(e)
+
 
 def aplicar_estilo_css(tema):
     """Inyecta CSS personalizado según el tema seleccionado con colores elegantes para todos los widgets"""
